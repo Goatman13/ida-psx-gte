@@ -122,11 +122,11 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		else:
 			return "UNK"
 
-	def decode_sf(self, dword):
+	def decode_sf_lm(self, dword):
 
 		sf = (dword >> 19) & 1
-		s = "sf={:d}".format(sf)
-		return s
+		lm = (dword >> 10) & 1
+		return "sf={:d}, lm={:d}".format(sf, lm)
 
 	def decode_mvmva(self, dword):
 
@@ -143,14 +143,15 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		return s
 
 	def ev_out_operand(self, ctx, op):
-		if (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable)):
-			if (self.itable[ctx.insn.itype - ITYPE_START].name == "mvmva" and op.n == 0):
+		if (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable) and op.n == 0):
+
+			if (self.itable[ctx.insn.itype - ITYPE_START].name == "mvmva"):
 				s=self.decode_mvmva(ida_bytes.get_wide_dword(ctx.insn.ea))
 				ctx.out_line(s, 4)
 				return 1
 
-			elif (self.itable[ctx.insn.itype - ITYPE_START].sf and op.n == 0):
-				s=self.decode_sf(ida_bytes.get_wide_dword(ctx.insn.ea))
+			else:
+				s=self.decode_sf_lm(ida_bytes.get_wide_dword(ctx.insn.ea))
 				ctx.out_line(s, 4)
 				return 1
 
