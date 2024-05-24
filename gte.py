@@ -14,36 +14,35 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		idaapi.IDP_Hooks.__init__(self)
 
 		class idef:
-			def __init__(self, opcode, name, sf, cmt):
+			def __init__(self, opcode, name, cmt):
 				self.opcode = opcode
 				self.name = name
-				self.sf = sf
 				self.cmt = cmt
 
 		self.itable = [
 			# Coprocessor Calculation Instructions
-			idef(0x01,  "RTPS",  False, "Perspective Transformation single"),
-			idef(0x06,  "NCLIP", False, "Normal clipping"),
-			idef(0x0C,  "OP",    True,  "Outer product of 2 vectors"),
-			idef(0x10,  "DPCS",  False, "Depth Cueing single"),
-			idef(0x11,  "INTPL", False, "Interpolation of a vector and far color vector"),
-			idef(0x12 , "MVMVA", False, "Multiply vector by matrix and add vector (see below)"), #sf handled in different part.
-			idef(0x13,  "NCDS",  False, "Normal color depth cue single vector"),
-			idef(0x14,  "CDP",   False, "Color Depth Que"),
-			idef(0x16,  "NCDT",  False, "Normal color depth cue triple vectors"),
-			idef(0x1B,  "NCCS",  False, "Normal Color Color single vector"),
-			idef(0x1C,  "CC",    False, "Color Color"),
-			idef(0x1E,  "NCS",   False, "Normal color single"),
-			idef(0x20,  "NCT",   False, "Normal color triple"),
-			idef(0x28,  "SQR",   True,  "Square of vector IR"),
-			idef(0x29,  "DCPL",  False, "Depth Cue Color light"),
-			idef(0x2A,  "DPCT",  False, "Depth Cueing triple (should be fake=08h, but isn't)"),
-			idef(0x2D,  "AVSZ3", False, "Average of three Z values"),
-			idef(0x2E,  "AVSZ4", False, "Average of four Z values"),
-			idef(0x30,  "RTPT",  False, "Perspective Transformation triple"),
-			idef(0x3D,  "GPF",   True,  "General purpose interpolation"),
-			idef(0x3E,  "GPL",   True,  "General purpose interpolation with base"),
-			idef(0x3F,  "NCCT",  False, "Normal Color Color triple vector"),
+			idef(0x01,  "RTPS",  "Perspective Transformation single"),
+			idef(0x06,  "NCLIP", "Normal clipping"),
+			idef(0x0C,  "OP",    "Outer product of 2 vectors"),
+			idef(0x10,  "DPCS",  "Depth Cueing single"),
+			idef(0x11,  "INTPL", "Interpolation of a vector and far color vector"),
+			idef(0x12 , "MVMVA", "Multiply vector by matrix and add vector (see below)"), #sf handled in different part.
+			idef(0x13,  "NCDS",  "Normal color depth cue single vector"),
+			idef(0x14,  "CDP",   "Color Depth Que"),
+			idef(0x16,  "NCDT",  "Normal color depth cue triple vectors"),
+			idef(0x1B,  "NCCS",  "Normal Color Color single vector"),
+			idef(0x1C,  "CC",    "Color Color"),
+			idef(0x1E,  "NCS",   "Normal color single"),
+			idef(0x20,  "NCT",   "Normal color triple"),
+			idef(0x28,  "SQR",   "Square of vector IR"),
+			idef(0x29,  "DCPL",  "Depth Cue Color light"),
+			idef(0x2A,  "DPCT",  "Depth Cueing triple (should be fake=08h, but isn't)"),
+			idef(0x2D,  "AVSZ3", "Average of three Z values"),
+			idef(0x2E,  "AVSZ4", "Average of four Z values"),
+			idef(0x30,  "RTPT",  "Perspective Transformation triple"),
+			idef(0x3D,  "GPF",   "General purpose interpolation"),
+			idef(0x3E,  "GPL",   "General purpose interpolation with base"),
+			idef(0x3F,  "NCCT",  "Normal Color Color triple vector"),
 		]
 		
 		self.CFC2_ITABLE_ID  = ida_allins.MIPS_cfc2
@@ -55,16 +54,9 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 
 		self.DATA_REG = 0
 		self.CTRL_REG = 1
-		self.MVMVA    = 2
 
 		for entry in self.itable:
 			entry.name = entry.name.lower()
-
-	def decode_instruction(self, index, insn, dword):
-
-		insn.itype = ITYPE_START + index
-		insn.Op1.type = ida_ua.o_void
-		insn.size = 4
 
 	def ev_ana_insn(self, insn):
 
@@ -85,8 +77,10 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 
 			if (not found):
 				return 0
-
-			self.decode_instruction(index, insn, dword)
+		
+			insn.itype = ITYPE_START + index
+			insn.Op1.type = ida_ua.o_void
+			insn.size = 4
 
 		return insn.size
 
@@ -135,12 +129,7 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		mv = (dword >> 15) & 3
 		tv = (dword >> 13) & 3
 		lm = (dword >> 10) & 1
-		s = "sf={:d}, ".format(sf)
-		s += "mm={:d}, ".format(mm)
-		s += "mv={:d}, ".format(mv)
-		s += "tv={:d}, ".format(tv)
-		s += "lm={:d}".format(lm)
-		return s
+		return "sf={:d}, mm={:d}, mv={:d}, tv={:d}, lm={:d}".format(sf, mm, mv, tv, lm)
 
 	def ev_out_operand(self, ctx, op):
 		if (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable) and op.n == 0):
@@ -149,7 +138,6 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 				s=self.decode_mvmva(ida_bytes.get_wide_dword(ctx.insn.ea))
 				ctx.out_line(s, 4)
 				return 1
-
 			else:
 				s=self.decode_sf_lm(ida_bytes.get_wide_dword(ctx.insn.ea))
 				ctx.out_line(s, 4)
@@ -187,12 +175,8 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 
 	def ev_out_mnem(self, ctx):
 		if (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable)):
-
-			modifier = ""
-			#if (self.itable[ctx.insn.itype - ITYPE_START].sf):
-			#	modifier = self.decode_sf(ida_bytes.get_wide_dword(ctx.insn.ea))
 			
-			ctx.out_custom_mnem(self.itable[ctx.insn.itype - ITYPE_START].name, MNEM_WIDTH, modifier)
+			ctx.out_custom_mnem(self.itable[ctx.insn.itype - ITYPE_START].name, MNEM_WIDTH, "")
 			return 1
 
 		# We do this to fix width of other instructions
@@ -211,10 +195,10 @@ class gte_plugin_t(idaapi.plugin_t):
 
 	def init(self):
 		
-		if (idaapi.ph.id == idaapi.PLFM_MIPS and ida_ida.inf_get_procname() == 'mipsl'):
+		if (ida_ida.inf_get_procname() == 'mipsl'):
 			self.gte = GTE_disassemble()
 			self.gte.hook()
-			print("PSX GTE COP2 instructions disassembler")
+			print("PSX GTE COP2 instructions disassembler loaded.")
 			return idaapi.PLUGIN_KEEP
 
 		return idaapi.PLUGIN_SKIP
