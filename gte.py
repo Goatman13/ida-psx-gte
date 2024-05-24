@@ -44,13 +44,6 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 			idef(0x3E,  "GPL",   "General purpose interpolation with base"),
 			idef(0x3F,  "NCCT",  "Normal Color Color triple vector"),
 		]
-		
-		self.CFC2_ITABLE_ID  = ida_allins.MIPS_cfc2
-		self.CTC2_ITABLE_ID  = ida_allins.MIPS_ctc2
-		self.MFC2_ITABLE_ID  = ida_allins.MIPS_mfc2
-		self.MTC2_ITABLE_ID  = ida_allins.MIPS_mtc2
-		self.LWC2_ITABLE_ID  = ida_allins.MIPS_lwc2
-		self.SWC2_ITABLE_ID  = ida_allins.MIPS_swc2
 
 		self.DATA_REG = 0
 		self.CTRL_REG = 1
@@ -122,7 +115,7 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		lm = (dword >> 10) & 1
 		return "sf={:d}, lm={:d}".format(sf, lm)
 
-	def decode_mvmva(self, dword):
+	def decode_mvmva_bits(self, dword):
 
 		sf = (dword >> 19) & 1
 		mm = (dword >> 17) & 3
@@ -135,7 +128,7 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		if (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable) and op.n == 0):
 
 			if (self.itable[ctx.insn.itype - ITYPE_START].name == "mvmva"):
-				s=self.decode_mvmva(ida_bytes.get_wide_dword(ctx.insn.ea))
+				s=self.decode_mvmva_bits(ida_bytes.get_wide_dword(ctx.insn.ea))
 				ctx.out_line(s, 4)
 				return 1
 			else:
@@ -146,22 +139,22 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		elif (op.type == ida_ua.o_idpspec1 and op.reg < 32):
 
 			# First we need to fix instructions (badly) disassembled by mips.dll
-			if (ctx.insn.itype == self.CFC2_ITABLE_ID and op.n == 1):
+			if (ctx.insn.itype == ida_allins.MIPS_cfc2 and op.n == 1):
 				op.specval = self.CTRL_REG
 				ctx.out_register(self.get_register(op, ctx))
-			elif (ctx.insn.itype == self.CTC2_ITABLE_ID and op.n == 1):
+			elif (ctx.insn.itype == ida_allins.MIPS_ctc2 and op.n == 1):
 				op.specval = self.CTRL_REG
 				ctx.out_register(self.get_register(op, ctx))
-			elif (ctx.insn.itype == self.MTC2_ITABLE_ID and op.n == 1):
+			elif (ctx.insn.itype == ida_allins.MIPS_mtc2 and op.n == 1):
 				op.specval = self.DATA_REG
 				ctx.out_register(self.get_register(op, ctx))
-			elif (ctx.insn.itype == self.MFC2_ITABLE_ID and op.n == 1):
+			elif (ctx.insn.itype == ida_allins.MIPS_mfc2 and op.n == 1):
 				op.specval = self.DATA_REG
 				ctx.out_register(self.get_register(op, ctx))
-			elif (ctx.insn.itype == self.LWC2_ITABLE_ID and op.n == 0):
+			elif (ctx.insn.itype == ida_allins.MIPS_lwc2 and op.n == 0):
 				op.specval = self.DATA_REG
 				ctx.out_register(self.get_register(op, ctx))
-			elif (ctx.insn.itype == self.SWC2_ITABLE_ID and op.n == 0):
+			elif (ctx.insn.itype == ida_allins.MIPS_swc2 and op.n == 0):
 				op.specval = self.DATA_REG
 				ctx.out_register(self.get_register(op, ctx))
 			elif (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable)):
