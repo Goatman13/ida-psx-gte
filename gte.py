@@ -26,7 +26,7 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 			idef(0x0C,  "OP",    "Outer product of 2 vectors"),
 			idef(0x10,  "DPCS",  "Depth Cueing single"),
 			idef(0x11,  "INTPL", "Interpolation of a vector and far color vector"),
-			idef(0x12 , "MVMVA", "Multiply vector by matrix and add vector (see below)"), #sf handled in different part.
+			idef(0x12 , "MVMVA", "Multiply vector by matrix and add vector (see below)"),
 			idef(0x13,  "NCDS",  "Normal color depth cue single vector"),
 			idef(0x14,  "CDP",   "Color Depth Que"),
 			idef(0x16,  "NCDT",  "Normal color depth cue triple vectors"),
@@ -48,34 +48,20 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 		self.DATA_REG = 0
 		self.CTRL_REG = 1
 
-		for entry in self.itable:
-			entry.name = entry.name.lower()
-
 	def ev_ana_insn(self, insn):
 
 		dword = ida_bytes.get_wide_dword(insn.ea)
 
 		if (dword >> 0x19 == 0x25):
-
 			opcode = dword & 0x3F
-
-			pos = 0
-			found = False
-			index = 0
-			for i in range(pos, len(self.itable)):
+			for i in range(0, len(self.itable)):
 				if (self.itable[i].opcode == opcode):
-					found = True
-					index = i
-					break
+					insn.itype = ITYPE_START + i
+					insn.Op1.type = ida_ua.o_void
+					insn.size = 4
+					return insn.size
 
-			if (not found):
-				return 0
-		
-			insn.itype = ITYPE_START + index
-			insn.Op1.type = ida_ua.o_void
-			insn.size = 4
-
-		return insn.size
+		return 0
 
 	def ev_get_autocmt(self, insn):
 		if (insn.itype >= ITYPE_START and insn.itype < ITYPE_START + len(self.itable)):
@@ -91,8 +77,8 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 
 	def get_register(self, op, ctx):
 
-		ctrl_regs = ["R11R12", "R13R21", "R22R23", "R31R32", "R33", "TRX", "TRY", "TRZ",
-					"L11L12", "L13L21", "L22L23", "L31L32", "L33", "RBK", "BBK", "GBK",
+		ctrl_regs = ["RT11RT12", "RT13RT21", "RT22RT23", "RT31RT32", "RT33", "TRX", "TRY", "TRZ",
+					"LM11LM12", "LM13LM21", "LM22LM23", "LM31LM32", "LM33", "RBK", "BBK", "GBK",
 					"LR1LR2", "LR3LG1", "LG2LG3", "LB1LB2", "LB3", "RFC", "GFC", "BFC",
 					"OFX", "OFY", "H", "DQA", "DQB", "ZSF3", "ZSF4", "FLAG"]
 		
@@ -127,7 +113,7 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 	def ev_out_operand(self, ctx, op):
 		if (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable) and op.n == 0):
 
-			if (self.itable[ctx.insn.itype - ITYPE_START].name == "mvmva"):
+			if (self.itable[ctx.insn.itype - ITYPE_START].name.lower() == "mvmva"):
 				s=self.decode_mvmva_bits(ida_bytes.get_wide_dword(ctx.insn.ea))
 				ctx.out_line(s, 4)
 				return 1
@@ -169,7 +155,7 @@ class GTE_disassemble(idaapi.IDP_Hooks):
 	def ev_out_mnem(self, ctx):
 		if (ctx.insn.itype >= ITYPE_START and ctx.insn.itype < ITYPE_START + len(self.itable)):
 			
-			ctx.out_custom_mnem(self.itable[ctx.insn.itype - ITYPE_START].name, MNEM_WIDTH, "")
+			ctx.out_custom_mnem(self.itable[ctx.insn.itype - ITYPE_START].name.lower(), MNEM_WIDTH, "")
 			return 1
 
 		# We do this to fix width of other instructions
@@ -180,7 +166,7 @@ class gte_plugin_t(idaapi.plugin_t):
 	flags = idaapi.PLUGIN_UNL
 	comment = ""
 	help = ""
-	wanted_name = "PSX GTE COP2 instructions disassembler"
+	wanted_name = "PSX GTE CP2 instructions disassembler"
 	wanted_hotkey = ""
 
 	def __init__(self):
@@ -191,7 +177,7 @@ class gte_plugin_t(idaapi.plugin_t):
 		if (ida_ida.inf_get_procname() == 'mipsl'):
 			self.gte = GTE_disassemble()
 			self.gte.hook()
-			print("PSX GTE COP2 instructions disassembler loaded.")
+			print("PSX GTE CP2 instructions disassembler loaded.")
 			return idaapi.PLUGIN_KEEP
 
 		return idaapi.PLUGIN_SKIP
